@@ -57,7 +57,7 @@ if ! ${PING} >/dev/null 2>&1; then
     exit 0
 fi
 
-for mail in "$QUEUE_DIR"/*.mail/; do
+for mail in "$QUEUE_DIR"/*.mail; do
     id="$(basename "$mail")"
     prefix="mail [ $id ]"
     if [[ ! -r "$mail/msmtp_flags" ]]; then
@@ -83,8 +83,8 @@ for mail in "$QUEUE_DIR"/*.mail/; do
         # so it is dropped and we use the regular logfile
         # Also, the missing xargs --arg-file .
         command="msmtp -C "$CONFIG" ${args}"
-        msg "$prefix handing over to msmtp cmd:  ${command}"
-        eval ${command}  < "$mail/message"
+        msg "$prefix handing over to msmtp cmd:  ${command} < \"$mail/message\""
+        eval ${command} < "$mail/message"
     else
         prefix="$prefix [ $(xargs -0 -a "$mail/msmtp_flags" printf '%s ')]"
 
@@ -93,11 +93,12 @@ for mail in "$QUEUE_DIR"/*.mail/; do
     fi
 
     ret="$?"
-    if [[ ! "$ret" -eq 0 ]] ; then
+    if [[ ! "$ret" -eq 0 ]]; then
         msg "$prefix failed to send; msmtp rc = $ret"
         continue
     fi
-    if ! rm -rf "$mail"; then
+	# safe handling of trash; requires rmtrash, coreutils, and util-linux
+    if ! trash "$mail"; then
         msg "$prefix sent but not purged from queue!?"
     fi
 done
